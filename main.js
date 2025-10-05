@@ -317,8 +317,8 @@ async function askWaterChoice() {
     if (!canAffordFiltered) {
         await typewriterText("⚠️ You don't have enough money for filtered water!", 40);
         
-        // Check if they have more than ₹3 and can afford at least 1 bottle of filtered water
-        if (gameState.money > 3) {
+        // Check if they have at least ₹3 and can afford at least 1 bottle of filtered water
+        if (gameState.money >= 3) {
             const maxFilteredBottles = Math.floor(gameState.money / FILTERED_WATER_COST);
             const remainingBottles = gameState.bottlesBought - maxFilteredBottles;
             const filterCost = maxFilteredBottles * FILTERED_WATER_COST;
