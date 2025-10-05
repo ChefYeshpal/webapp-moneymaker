@@ -23,6 +23,11 @@ let gameState = {
     consecutiveRiverDays: 0,
     reputationBonus: 0, // Percentage bonus for sales (0-30%)
     lastWaterType: '', // Track previous day's water type
+    // Mixed water mode variables
+    mixedWaterMode: false,
+    maxFilteredBottles: 0,
+    remainingBottles: 0,
+    filterCost: 0,
     inventory: {
         riverWaterBottles: 0,
         filteredWaterBottles: 0,
@@ -311,15 +316,101 @@ async function askWaterChoice() {
     const canAffordFiltered = gameState.money >= gameState.bottlesBought * FILTERED_WATER_COST;
     if (!canAffordFiltered) {
         await typewriterText("⚠️ You don't have enough money for filtered water!", 40);
-        await typewriterText("You'll have to use river water.", 40);
-        await processWaterChoice('river');
-        return;
+        
+        // Check if they have more than ₹3 and can afford at least 1 bottle of filtered water
+        if (gameState.money > 3) {
+            const maxFilteredBottles = Math.floor(gameState.money / FILTERED_WATER_COST);
+            const remainingBottles = gameState.bottlesBought - maxFilteredBottles;
+            const filterCost = maxFilteredBottles * FILTERED_WATER_COST;
+            
+            await typewriterText(`But you can fill ${maxFilteredBottles} bottles with filtered water for ₹${filterCost.toFixed(2)}.`, 40);
+            await typewriterText(`The remaining ${remainingBottles} bottles would be filled with river water.`, 40);
+            await typewriterText("Do you want to fill as many as possible with filtered water and the rest with river water?", 40);
+            
+            // Set a flag to indicate we're in mixed water mode
+            gameState.mixedWaterMode = true;
+            gameState.maxFilteredBottles = maxFilteredBottles;
+            gameState.remainingBottles = remainingBottles;
+            gameState.filterCost = filterCost;
+            
+            showInput("Type 'yes'/'y' or 'no'/'n'");
+            return;
+        } else {
+            await typewriterText("You'll have to use river water.", 40);
+            await processWaterChoice('river');
+            return;
+        }
     }
     await typewriterText("Which water do you choose?", 40);
     showInput("Type 'filtered'/'filter'/'1' or 'river'/'2'");
 }
 async function processWaterChoice(input) {
     const choice = input.toLowerCase().trim();
+    
+    // Handle mixed water mode responses
+    if (gameState.mixedWaterMode) {
+        if (choice === 'yes' || choice === 'y') {
+            // User chose mixed water option
+            hideInput();
+            
+            // Deduct money for filtered water
+            gameState.money -= gameState.filterCost;
+            gameState.totalCost += gameState.filterCost;
+            
+            // Update inventory
+            gameState.inventory.filteredWaterBottles += gameState.maxFilteredBottles;
+            gameState.inventory.riverWaterBottles += gameState.remainingBottles;
+            
+            // Set water type as mixed and update reputation
+            gameState.waterType = 'mixed';
+            gameState.riverWaterUsage++; // Still counts as river water usage for reputation
+            updateReputation('river'); // Mixed counts as river for reputation purposes
+            
+            await typewriterText(`Great! You filled ${gameState.maxFilteredBottles} bottles with filtered water for ₹${gameState.filterCost.toFixed(2)}.`, 40);
+            await typewriterText(`The remaining ${gameState.remainingBottles} bottles were filled with river water.`, 40);
+            
+            // Clean up mixed water mode variables
+            gameState.mixedWaterMode = false;
+            delete gameState.maxFilteredBottles;
+            delete gameState.remainingBottles;
+            delete gameState.filterCost;
+            
+        } else if (choice === 'no' || choice === 'n') {
+            // User declined mixed water, use all river water
+            hideInput();
+            gameState.waterType = 'river';
+            gameState.riverWaterUsage++;
+            updateReputation('river');
+            gameState.inventory.riverWaterBottles += gameState.bottlesBought;
+            
+            await typewriterText("You chose to fill all bottles with river water - it's free!", 40);
+            await typewriterText("You fill your bottles from the nearby river.", 40);
+            
+            // Clean up mixed water mode variables
+            gameState.mixedWaterMode = false;
+            delete gameState.maxFilteredBottles;
+            delete gameState.remainingBottles;
+            delete gameState.filterCost;
+            
+        } else {
+            await typewriterText("Please type 'yes'/'y' or 'no'/'n'.", 40);
+            showInput("Type 'yes'/'y' or 'no'/'n'");
+            return;
+        }
+        
+        // Show reputation status and continue
+        showReputationStatus();
+        await typewriterText(`Money left: ₹${gameState.money.toFixed(2)}`, 40);
+        
+        // Check big spender achievement
+        if (window.achievementManager) {
+            window.achievementManager.checkPurchaseAchievements(gameState);
+        }
+        
+        gameState.currentStep = GameStep.GO_TO_STATION;
+        await goToStation();
+        return;
+    }
     
     // Check for filtered water options
     if (choice === 'filtered' || choice === 'filter' || choice === '1') {
