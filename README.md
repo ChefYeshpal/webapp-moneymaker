@@ -6,6 +6,8 @@ Also, this is kinda based off of a text-based game which I played when I was you
 
 ## Things I wanted to add
 
+(did not add, because of fear of increasing of complexity of this game. It's meant to be a simple text based game, not a text based rpg or something)
+
 - Different locations
     - Railway station (here, cheaper water bottle = more sales)
     - Museum (eh, it's there)
@@ -67,3 +69,12 @@ Also, this is kinda based off of a text-based game which I played when I was you
 - 5 Oct 2025
     - Added a function so you can fill as many bottles as you can with filter water with the max amount of money you have, rest can be filled with river water.
     - Added function so that it shows amount of bottles sold out of total bottles, rather than the number of bottles made that day
+    - Added a price fluctuation stats
+        - keeping the price consistent will give you more sales over time
+        - % resets if you change the price even one day
+    - Final push, no more updates
+
+
+## Thanks to the siege stonemasons and oliver
+
+So, this is a continuation of an older project I made while I was in 10th grade. It was just meant to help me learn python, and considering this weeks theme was coins (or anything relating to money), I figured this project could help me in learning js as well (tho originally it started as ts, but anyways...). So, I'd like to thank the stonemasons and oliver for giving me such an opportuinity, because if it wasn't for you guys then I probably would have never picked this back up. Thanks guys :D
