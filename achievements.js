@@ -6,11 +6,11 @@ class AchievementManager {
                 bigSpender: {
                 id: 'bigSpender',
                 name: 'Big Spender',
-                description: 'Buy 50 bottles filled with filtered water',
+                description: 'Buy 500 bottles filled with filtered water',
                 unlocked: false,
                 icon: '🛍️',
                 progress: 0,
-                target: 50
+                target: 500
             },     id: 'oneSelling',
                 name: 'One Bottle Wonder',
                 description: 'Sell exactly one bottle',
