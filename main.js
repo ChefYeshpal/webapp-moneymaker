@@ -28,10 +28,6 @@ let gameState = {
     maxFilteredBottles: 0,
     remainingBottles: 0,
     filterCost: 0,
-    // Price consistency system
-    lastSellingPrice: 0, // Track previous day's price
-    consecutiveSamePriceDays: 0, // How many days the price has stayed the same
-    priceConsistencyBonus: 0, // Percentage bonus for consistent pricing (0-80%)
     inventory: {
         riverWaterBottles: 0,
         filteredWaterBottles: 0,
@@ -171,73 +167,6 @@ function updateReputation(currentWaterType) {
     }
     
     gameState.lastWaterType = currentWaterType;
-}
-
-// Price consistency system functions
-function updatePriceConsistency(currentPrice) {
-    // Check if price is the same as previous day
-    if (gameState.day > 1 && gameState.lastSellingPrice === currentPrice) {
-        gameState.consecutiveSamePriceDays++;
-    } else {
-        // Price changed, reset counter
-        gameState.consecutiveSamePriceDays = 1; // Start counting from this day
-    }
-    
-    // Calculate bonus based on consecutive days (every 5 days = +20%, max 80%)
-    const bonusMultiplier = Math.floor(gameState.consecutiveSamePriceDays / 5);
-    gameState.priceConsistencyBonus = Math.min(80, bonusMultiplier * 20);
-    
-    gameState.lastSellingPrice = currentPrice;
-}
-
-async function showPriceConsistencyStatus() {
-    if (gameState.day >= 2) { // Only show from day 2 onwards
-        if (gameState.consecutiveSamePriceDays >= 5 && gameState.priceConsistencyBonus > 0) {
-            const nextBonus = gameState.priceConsistencyBonus < 80 ? gameState.priceConsistencyBonus + 20 : 80;
-            const daysToNext = gameState.priceConsistencyBonus < 80 ? 
-                (5 - (gameState.consecutiveSamePriceDays % 5)) : 0;
-            
-            if (gameState.priceConsistencyBonus >= 80) {
-                showPriceConsistencyNotification(
-                    '💎', 
-                    'Maximum Brand Loyalty!', 
-                    `+${gameState.priceConsistencyBonus}% sales from consistent pricing (maxed out!)`
-                );
-            } else {
-                showPriceConsistencyNotification(
-                    '🔄', 
-                    'Brand Loyalty Bonus!', 
-                    `+${gameState.priceConsistencyBonus}% sales from ${gameState.consecutiveSamePriceDays} days of ₹${gameState.lastSellingPrice} pricing`
-                );
-            }
-        } else if (gameState.consecutiveSamePriceDays >= 3) {
-            const daysLeft = 5 - gameState.consecutiveSamePriceDays;
-            showPriceConsistencyNotification(
-                '📊', 
-                'Building Brand Loyalty...', 
-                `${daysLeft} more days of ₹${gameState.lastSellingPrice} pricing for +20% sales bonus`
-            );
-        } else if (gameState.consecutiveSamePriceDays === 1 && gameState.day > 2) {
-            showPriceConsistencyNotification(
-                '🔄', 
-                'Price Changed', 
-                `Brand loyalty reset - new price: ₹${gameState.lastSellingPrice}`
-            );
-        }
-    }
-}
-
-function showPriceConsistencyNotification(icon, title, message) {
-    // Use the existing achievement notification system
-    if (window.achievementManager) {
-        const fakeAchievement = {
-            icon: icon,
-            name: title,
-            description: message,
-            customTitle: 'Brand Loyalty Update'
-        };
-        window.achievementManager.showNotification(fakeAchievement);
-    }
 }
 
 async function showReputationStatus() {
@@ -560,15 +489,7 @@ async function processSellingPrice(input) {
     }
     gameState.sellingPrice = price;
     hideInput();
-    
-    // Update price consistency system
-    updatePriceConsistency(price);
-    
     await typewriterText(`You set the price at ₹${price} per bottle.`, 40);
-    
-    // Show price consistency status
-    await showPriceConsistencyStatus();
-    
     await typewriterText("Time to start selling!", 40);
     gameState.currentStep = GameStep.SELLING;
     await startSelling();
@@ -606,10 +527,6 @@ async function simulateSales() {
     // Apply reputation bonus from filtered water consistency
     const reputationMultiplier = 1 + (gameState.reputationBonus / 100);
     salesMultiplier *= reputationMultiplier;
-    
-    // Apply price consistency bonus
-    const priceConsistencyMultiplier = 1 + (gameState.priceConsistencyBonus / 100);
-    salesMultiplier *= priceConsistencyMultiplier;
     
     // Add some randomness
     const randomFactor = 0.7 + Math.random() * 0.6; // 0.7 to 1.3
@@ -784,10 +701,6 @@ async function endGame() {
     }
     if (gameState.reputationBonus > 0) {
         await typewriterText(`🌟 You built a quality reputation with ${gameState.reputationBonus}% sales bonus!`, 40);
-    }
-    if (gameState.priceConsistencyBonus > 0) {
-        await typewriterText(`🔄 You built brand loyalty with ${gameState.priceConsistencyBonus}% sales bonus from consistent pricing!`, 40);
-        await typewriterText(`Longest consistent pricing: ${gameState.consecutiveSamePriceDays} days at ₹${gameState.lastSellingPrice}`, 40);
     }
     const maxStreak = Math.max(gameState.consecutiveFilteredDays, gameState.consecutiveRiverDays);
     if (maxStreak >= 5) {
@@ -1069,156 +982,5 @@ window.testReputation = {
         console.log('window.testReputation.testWaterChoice.fiveDaysFiltered() - Simulate 5 day buildup');
         console.log('window.testReputation.testWaterChoice.reputationDecline() - Simulate decline');
         console.log('window.testReputation.help() - Show this help');
-    }
-};
-
-// Console Testing Functions for Price Consistency System
-window.testPriceConsistency = {
-    // Show current price consistency status
-    status: () => {
-        console.log('\n=== PRICE CONSISTENCY STATUS ===');
-        console.log(`Current Day: ${gameState.day}`);
-        console.log(`Last Selling Price: ₹${gameState.lastSellingPrice}`);
-        console.log(`Consecutive Same Price Days: ${gameState.consecutiveSamePriceDays}`);
-        console.log(`Price Consistency Bonus: ${gameState.priceConsistencyBonus}%`);
-        console.log(`Next bonus threshold: ${Math.ceil(gameState.consecutiveSamePriceDays / 5) * 5} days`);
-    },
-
-    // Force trigger price consistency notifications
-    triggerNotifications: {
-        bonus: () => {
-            gameState.consecutiveSamePriceDays = 10;
-            gameState.priceConsistencyBonus = 40;
-            gameState.lastSellingPrice = 5;
-            showPriceConsistencyNotification('🔄', 'Brand Loyalty Bonus!', '+40% sales from 10 days of ₹5 pricing');
-            console.log('🔄 Triggered price consistency bonus notification');
-        },
-        
-        building: () => {
-            gameState.consecutiveSamePriceDays = 3;
-            gameState.lastSellingPrice = 4;
-            showPriceConsistencyNotification('📊', 'Building Brand Loyalty...', '2 more days of ₹4 pricing for +20% sales bonus');
-            console.log('📊 Triggered building loyalty notification');
-        },
-        
-        maximum: () => {
-            gameState.consecutiveSamePriceDays = 20;
-            gameState.priceConsistencyBonus = 80;
-            gameState.lastSellingPrice = 3;
-            showPriceConsistencyNotification('💎', 'Maximum Brand Loyalty!', '+80% sales from consistent pricing (maxed out!)');
-            console.log('💎 Triggered maximum loyalty notification');
-        },
-
-        priceChanged: () => {
-            gameState.consecutiveSamePriceDays = 1;
-            gameState.lastSellingPrice = 6;
-            showPriceConsistencyNotification('🔄', 'Price Changed', 'Brand loyalty reset - new price: ₹6');
-            console.log('🔄 Triggered price changed notification');
-        },
-
-        all: () => {
-            console.log('🧪 Testing all price consistency notifications...');
-            window.testPriceConsistency.triggerNotifications.building();
-            setTimeout(() => window.testPriceConsistency.triggerNotifications.bonus(), 1000);
-            setTimeout(() => window.testPriceConsistency.triggerNotifications.maximum(), 2000);
-            setTimeout(() => window.testPriceConsistency.triggerNotifications.priceChanged(), 3000);
-        }
-    },
-
-    // Set price consistency state for testing
-    setState: {
-        // Set to almost ready for first bonus
-        almostReady: () => {
-            gameState.consecutiveSamePriceDays = 4;
-            gameState.priceConsistencyBonus = 0;
-            gameState.lastSellingPrice = 5;
-            console.log('🔧 Set state: 1 day away from first price consistency bonus');
-            window.testPriceConsistency.status();
-        },
-
-        // Set to medium bonus
-        mediumBonus: () => {
-            gameState.consecutiveSamePriceDays = 12;
-            gameState.priceConsistencyBonus = 40;
-            gameState.lastSellingPrice = 4;
-            console.log('🔧 Set state: Medium price consistency bonus (40%)');
-            window.testPriceConsistency.status();
-        },
-
-        // Set to maximum bonus
-        maxBonus: () => {
-            gameState.consecutiveSamePriceDays = 25;
-            gameState.priceConsistencyBonus = 80;
-            gameState.lastSellingPrice = 3;
-            console.log('🔧 Set state: Maximum price consistency bonus (80%)');
-            window.testPriceConsistency.status();
-        },
-
-        // Reset price consistency
-        reset: () => {
-            gameState.consecutiveSamePriceDays = 0;
-            gameState.priceConsistencyBonus = 0;
-            gameState.lastSellingPrice = 0;
-            console.log('🔧 Reset price consistency state');
-            window.testPriceConsistency.status();
-        }
-    },
-
-    // Test the price consistency system with different prices
-    testPricing: {
-        // Simulate 5 days of same price to trigger first bonus
-        fiveDaysSame: (price = 5) => {
-            console.log(`🧪 Simulating 5 days of ₹${price} pricing...`);
-            for (let i = 1; i <= 5; i++) {
-                gameState.day = i;
-                updatePriceConsistency(price);
-                console.log(`Day ${i}: Consecutive days: ${gameState.consecutiveSamePriceDays}, Bonus: ${gameState.priceConsistencyBonus}%`);
-            }
-            showPriceConsistencyStatus();
-        },
-
-        // Simulate building up to maximum bonus
-        buildToMax: (price = 4) => {
-            console.log(`🧪 Simulating build up to maximum bonus with ₹${price} pricing...`);
-            for (let i = 1; i <= 25; i++) {
-                gameState.day = i;
-                updatePriceConsistency(price);
-                if (i % 5 === 0) {
-                    console.log(`Day ${i}: Consecutive days: ${gameState.consecutiveSamePriceDays}, Bonus: ${gameState.priceConsistencyBonus}%`);
-                }
-            }
-            showPriceConsistencyStatus();
-        },
-
-        // Simulate price change resetting bonus
-        priceChangeReset: () => {
-            console.log('🧪 Simulating price change reset...');
-            // First build up some bonus
-            window.testPriceConsistency.setState.mediumBonus();
-            console.log('Before price change:', { days: gameState.consecutiveSamePriceDays, bonus: gameState.priceConsistencyBonus });
-            // Then change price
-            updatePriceConsistency(7);
-            console.log('After price change:', { days: gameState.consecutiveSamePriceDays, bonus: gameState.priceConsistencyBonus });
-            showPriceConsistencyStatus();
-        }
-    },
-
-    // Show help
-    help: () => {
-        console.log('\n=== PRICE CONSISTENCY TESTING HELP ===');
-        console.log('window.testPriceConsistency.status() - Show current price consistency status');
-        console.log('window.testPriceConsistency.triggerNotifications.bonus() - Show bonus notification');
-        console.log('window.testPriceConsistency.triggerNotifications.building() - Show building notification');
-        console.log('window.testPriceConsistency.triggerNotifications.maximum() - Show maximum notification');
-        console.log('window.testPriceConsistency.triggerNotifications.priceChanged() - Show price changed notification');
-        console.log('window.testPriceConsistency.triggerNotifications.all() - Show all notifications');
-        console.log('window.testPriceConsistency.setState.almostReady() - Set to 1 day from bonus');
-        console.log('window.testPriceConsistency.setState.mediumBonus() - Set medium bonus');
-        console.log('window.testPriceConsistency.setState.maxBonus() - Set maximum bonus');
-        console.log('window.testPriceConsistency.setState.reset() - Reset price consistency');
-        console.log('window.testPriceConsistency.testPricing.fiveDaysSame(price) - Simulate 5 days same price');
-        console.log('window.testPriceConsistency.testPricing.buildToMax(price) - Simulate build to max bonus');
-        console.log('window.testPriceConsistency.testPricing.priceChangeReset() - Simulate price change reset');
-        console.log('window.testPriceConsistency.help() - Show this help');
     }
 };
