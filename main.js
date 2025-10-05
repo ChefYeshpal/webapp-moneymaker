@@ -613,9 +613,34 @@ async function simulateSales() {
     const reputationMultiplier = 1 + (gameState.reputationBonus / 100);
     salesMultiplier *= reputationMultiplier;
     
+    // Apply price consistency bonus
+    const priceConsistencyMultiplier = 1 + (gameState.priceConsistencyBonus / 100);
+    salesMultiplier *= priceConsistencyMultiplier;
+    
+    // Apply price fluctuation penalty
+    const fluctuationPenalty = calculateFluctuationPenalty();
+    const fluctuationMultiplier = 1 - (fluctuationPenalty / 100);
+    salesMultiplier *= fluctuationMultiplier;
+    
+    // Console logging for sales calculation breakdown
+    console.log(`📊 [Sales Calculation] Day ${gameState.day}:`);
+    console.log(`  Base sales multiplier: ${(salesMultiplier / reputationMultiplier / priceConsistencyMultiplier / fluctuationMultiplier).toFixed(3)}`);
+    if (gameState.reputationBonus > 0) {
+        console.log(`  Reputation bonus: +${gameState.reputationBonus}% (×${reputationMultiplier.toFixed(3)})`);
+    }
+    if (gameState.priceConsistencyBonus > 0) {
+        console.log(`  Price consistency bonus: +${gameState.priceConsistencyBonus}% (×${priceConsistencyMultiplier.toFixed(3)})`);
+    }
+    if (fluctuationPenalty > 0) {
+        console.log(`  Price fluctuation penalty: -${fluctuationPenalty.toFixed(1)}% (×${fluctuationMultiplier.toFixed(3)})`);
+    }
+    console.log(`  Final sales multiplier: ${salesMultiplier.toFixed(3)}`);
+    
     // Add some randomness
     const randomFactor = 0.7 + Math.random() * 0.6; // 0.7 to 1.3
     const actualSalesRate = Math.min(1, salesMultiplier * randomFactor);
+    console.log(`  Random factor: ${randomFactor.toFixed(3)}, Final sales rate: ${actualSalesRate.toFixed(3)}`);
+    
     const bottlesSold = Math.floor(totalBottles * actualSalesRate);
     const revenue = bottlesSold * gameState.sellingPrice;
     const profit = revenue - gameState.totalCost;
@@ -1067,5 +1092,126 @@ window.testReputation = {
         console.log('window.testReputation.testWaterChoice.fiveDaysFiltered() - Simulate 5 day buildup');
         console.log('window.testReputation.testWaterChoice.reputationDecline() - Simulate decline');
         console.log('window.testReputation.help() - Show this help');
+    }
+};
+
+// Console Testing Functions for Price Consistency System
+window.testPricing = {
+    // Show current price consistency status
+    status: () => {
+        console.log('\n=== PRICE CONSISTENCY STATUS ===');
+        console.log(`Current Day: ${gameState.day}`);
+        console.log(`Current Price: ₹${gameState.sellingPrice}`);
+        console.log(`Last Price: ₹${gameState.lastPrice}`);
+        console.log(`Consecutive Same Price Days: ${gameState.consecutiveSamePriceDays}`);
+        console.log(`Price Consistency Bonus: ${gameState.priceConsistencyBonus}%`);
+        console.log(`Total Price Changes: ${gameState.priceChanges}`);
+        console.log(`Recent Price Changes: ${gameState.recentPriceChanges.length}`);
+        if (gameState.recentPriceChanges.length > 0) {
+            console.log(`Recent Changes:`, gameState.recentPriceChanges);
+        }
+        const penalty = calculateFluctuationPenalty();
+        console.log(`Current Fluctuation Penalty: ${penalty.toFixed(1)}%`);
+    },
+
+    // Test price consistency scenarios
+    simulate: {
+        // Simulate consistent pricing for bonus
+        consistentPricing: (price = 3, days = 15) => {
+            console.log(`🧪 Simulating ${days} days of consistent ₹${price} pricing...`);
+            gameState.lastPrice = 0; // Reset
+            gameState.consecutiveSamePriceDays = 0;
+            gameState.priceConsistencyBonus = 0;
+            
+            for (let i = 1; i <= days; i++) {
+                gameState.day = i;
+                updatePriceConsistency(price);
+            }
+            window.testPricing.status();
+        },
+
+        // Simulate price fluctuations
+        fluctuatingPrices: () => {
+            console.log('🧪 Simulating fluctuating prices...');
+            const prices = [3, 4, 2.5, 5, 3.5, 2, 4.5, 3, 6, 2.5];
+            gameState.lastPrice = 0; // Reset
+            gameState.consecutiveSamePriceDays = 0;
+            gameState.priceConsistencyBonus = 0;
+            gameState.priceChanges = 0;
+            gameState.recentPriceChanges = [];
+            
+            for (let i = 0; i < prices.length; i++) {
+                gameState.day = i + 1;
+                updatePriceConsistency(prices[i]);
+            }
+            window.testPricing.status();
+        },
+
+        // Simulate mixed scenario
+        mixedScenario: () => {
+            console.log('🧪 Simulating mixed pricing scenario...');
+            // 5 days consistent, then fluctuations, then consistent again
+            const prices = [3, 3, 3, 3, 3, 4, 2.5, 5, 3, 3, 3, 3, 3, 3, 3];
+            gameState.lastPrice = 0; // Reset
+            gameState.consecutiveSamePriceDays = 0;
+            gameState.priceConsistencyBonus = 0;
+            gameState.priceChanges = 0;
+            gameState.recentPriceChanges = [];
+            
+            for (let i = 0; i < prices.length; i++) {
+                gameState.day = i + 1;
+                updatePriceConsistency(prices[i]);
+                if (i === 4) console.log('📊 After 5 consistent days:');
+                if (i === 7) console.log('📊 After fluctuations:');
+                if (i === 14) console.log('📊 After returning to consistency:');
+            }
+            window.testPricing.status();
+        }
+    },
+
+    // Test different bonus levels
+    testBonus: {
+        level1: () => {
+            console.log('🧪 Testing 20% bonus (5 days)...');
+            window.testPricing.simulate.consistentPricing(3, 5);
+        },
+        level2: () => {
+            console.log('🧪 Testing 40% bonus (10 days)...');
+            window.testPricing.simulate.consistentPricing(3, 10);
+        },
+        level3: () => {
+            console.log('🧪 Testing 60% bonus (15 days)...');
+            window.testPricing.simulate.consistentPricing(3, 15);
+        },
+        maxBonus: () => {
+            console.log('🧪 Testing max 80% bonus (20+ days)...');
+            window.testPricing.simulate.consistentPricing(3, 25);
+        }
+    },
+
+    // Reset price tracking
+    reset: () => {
+        gameState.lastPrice = 0;
+        gameState.consecutiveSamePriceDays = 0;
+        gameState.priceConsistencyBonus = 0;
+        gameState.priceChanges = 0;
+        gameState.recentPriceChanges = [];
+        console.log('🔧 Price tracking reset');
+        window.testPricing.status();
+    },
+
+    // Show help
+    help: () => {
+        console.log('\n=== PRICE CONSISTENCY TESTING HELP ===');
+        console.log('window.testPricing.status() - Show current price tracking status');
+        console.log('window.testPricing.simulate.consistentPricing(price, days) - Simulate consistent pricing');
+        console.log('window.testPricing.simulate.fluctuatingPrices() - Simulate price fluctuations');
+        console.log('window.testPricing.simulate.mixedScenario() - Simulate mixed pricing scenario');
+        console.log('window.testPricing.testBonus.level1() - Test 20% bonus (5 days)');
+        console.log('window.testPricing.testBonus.level2() - Test 40% bonus (10 days)');
+        console.log('window.testPricing.testBonus.level3() - Test 60% bonus (15 days)');
+        console.log('window.testPricing.testBonus.maxBonus() - Test max 80% bonus (20+ days)');
+        console.log('window.testPricing.reset() - Reset price tracking');
+        console.log('window.testPricing.help() - Show this help');
     }
 };
