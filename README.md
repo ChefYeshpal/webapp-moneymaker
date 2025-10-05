@@ -64,3 +64,6 @@ Also, this is kinda based off of a text-based game which I played when I was you
         - profit 50k to get one
         - Lose 50k to get the other
         - Both of these should be a little difficult to get, I dont think anybody'll even use this game for that long...
+- 5 Oct 2025
+    - Added a function so you can fill as many bottles as you can with filter water with the max amount of money you have, rest can be filled with river water.
+    - Added function so that it shows amount of bottles sold out of total bottles, rather than the number of bottles made that day

@@ -581,11 +581,11 @@ async function simulateSales() {
     }
     
     gameState.currentStep = GameStep.DAY_RESULTS;
-    await showDayResults(bottlesSold, revenue, profit);
+    await showDayResults(bottlesSold, revenue, profit, totalBottles);
 }
-async function showDayResults(bottlesSold, revenue, profit) {
+async function showDayResults(bottlesSold, revenue, profit, totalBottles) {
     await typewriterText("=== End of Day Results ===", 40);
-    await typewriterText(`Bottles sold: ${bottlesSold} out of ${gameState.bottlesBought}`, 40);
+    await typewriterText(`Bottles sold: ${bottlesSold} out of ${totalBottles}`, 40);
     await typewriterText(`Revenue earned: ₹${revenue.toFixed(2)}`, 40);
     await typewriterText(`Total cost: ₹${gameState.totalCost.toFixed(2)}`, 40);
     // Create profit/loss display with colors
