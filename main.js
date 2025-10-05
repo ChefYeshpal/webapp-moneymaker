@@ -28,6 +28,12 @@ let gameState = {
     maxFilteredBottles: 0,
     remainingBottles: 0,
     filterCost: 0,
+    // Price consistency tracking
+    lastPrice: 0,
+    consecutiveSamePriceDays: 0,
+    priceConsistencyBonus: 0, // Percentage bonus for price consistency (0-80%)
+    priceChanges: 0, // Track total price changes
+    recentPriceChanges: [], // Track recent price changes for fluctuation penalty
     inventory: {
         riverWaterBottles: 0,
         filteredWaterBottles: 0,
@@ -205,6 +211,81 @@ function showReputationNotification(icon, title, message) {
         };
         window.achievementManager.showNotification(fakeAchievement);
     }
+}
+
+// Price consistency system functions
+function updatePriceConsistency(currentPrice) {
+    // Check if this is the first day or if price changed
+    if (gameState.day === 1) {
+        gameState.lastPrice = currentPrice;
+        gameState.consecutiveSamePriceDays = 1;
+        console.log(`🏷️ [Price Tracking] Day ${gameState.day}: First day, price set to ₹${currentPrice}`);
+        return;
+    }
+    
+    if (currentPrice === gameState.lastPrice) {
+        // Same price as previous day
+        gameState.consecutiveSamePriceDays++;
+        console.log(`🏷️ [Price Tracking] Day ${gameState.day}: Same price (₹${currentPrice}) for ${gameState.consecutiveSamePriceDays} consecutive days`);
+    } else {
+        // Price changed
+        gameState.priceChanges++;
+        gameState.recentPriceChanges.push({
+            day: gameState.day,
+            oldPrice: gameState.lastPrice,
+            newPrice: currentPrice
+        });
+        
+        // Keep only last 10 price changes for fluctuation calculation
+        if (gameState.recentPriceChanges.length > 10) {
+            gameState.recentPriceChanges.shift();
+        }
+        
+        console.log(`🏷️ [Price Tracking] Day ${gameState.day}: Price changed from ₹${gameState.lastPrice} to ₹${currentPrice} (Total changes: ${gameState.priceChanges})`);
+        
+        // Reset consecutive days counter
+        gameState.consecutiveSamePriceDays = 1;
+        gameState.lastPrice = currentPrice;
+    }
+    
+    // Calculate price consistency bonus (20% every 5 days, max 80%)
+    const bonusMultiplier = Math.floor(gameState.consecutiveSamePriceDays / 5);
+    gameState.priceConsistencyBonus = Math.min(80, bonusMultiplier * 20);
+    
+    if (gameState.priceConsistencyBonus > 0) {
+        console.log(`📈 [Price Consistency] Bonus: ${gameState.priceConsistencyBonus}% (${gameState.consecutiveSamePriceDays} consecutive days)`);
+    }
+}
+
+function calculateFluctuationPenalty() {
+    // Calculate penalty based on recent price changes
+    if (gameState.recentPriceChanges.length < 2) {
+        return 0; // No penalty if less than 2 changes
+    }
+    
+    // Calculate average change magnitude over recent changes
+    let totalChange = 0;
+    for (let i = 0; i < gameState.recentPriceChanges.length; i++) {
+        const change = gameState.recentPriceChanges[i];
+        const changeMagnitude = Math.abs(change.newPrice - change.oldPrice);
+        totalChange += changeMagnitude;
+    }
+    
+    const averageChange = totalChange / gameState.recentPriceChanges.length;
+    const changeFrequency = gameState.recentPriceChanges.length;
+    
+    // Penalty calculation: more frequent changes and larger changes = higher penalty
+    // Max penalty: 30% (when changes are frequent and large)
+    const frequencyPenalty = Math.min(15, changeFrequency * 1.5); // Up to 15% for frequency
+    const magnitudePenalty = Math.min(15, averageChange * 2); // Up to 15% for magnitude
+    
+    const totalPenalty = Math.min(30, frequencyPenalty + magnitudePenalty);
+    
+    if (totalPenalty > 0) {
+        console.log(`📉 [Price Fluctuation] Penalty: ${totalPenalty.toFixed(1)}% (${changeFrequency} recent changes, avg magnitude: ₹${averageChange.toFixed(2)})`);
+    }
+    
+    return totalPenalty;
 }
 
 function toggleAnimationMode() {
@@ -488,6 +569,10 @@ async function processSellingPrice(input) {
         return;
     }
     gameState.sellingPrice = price;
+    
+    // Update price consistency tracking
+    updatePriceConsistency(price);
+    
     hideInput();
     await typewriterText(`You set the price at ₹${price} per bottle.`, 40);
     await typewriterText("Time to start selling!", 40);
