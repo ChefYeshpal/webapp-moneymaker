@@ -28,6 +28,10 @@ let gameState = {
     maxFilteredBottles: 0,
     remainingBottles: 0,
     filterCost: 0,
+    // Price consistency system
+    lastSellingPrice: 0, // Track previous day's price
+    consecutiveSamePriceDays: 0, // How many days the price has stayed the same
+    priceConsistencyBonus: 0, // Percentage bonus for consistent pricing (0-80%)
     inventory: {
         riverWaterBottles: 0,
         filteredWaterBottles: 0,
