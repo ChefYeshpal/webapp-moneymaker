@@ -323,8 +323,8 @@ async function askWaterChoice() {
             const remainingBottles = gameState.bottlesBought - maxFilteredBottles;
             const filterCost = maxFilteredBottles * FILTERED_WATER_COST;
             
-            await typewriterText(`But you can fill ${maxFilteredBottles} bottles with filtered water for ₹${filterCost.toFixed(2)}.`, 40);
-            await typewriterText(`The remaining ${remainingBottles} bottles would be filled with river water.`, 40);
+            await typewriterText(`But you can fill ${maxFilteredBottles} bottle(s) with filtered water for ₹${filterCost.toFixed(2)}.`, 40);
+            await typewriterText(`The remaining ${remainingBottles} bottle(s) would be filled with river water.`, 40);
             await typewriterText("Do you want to fill as many as possible with filtered water and the rest with river water?", 40);
             
             // Set a flag to indicate we're in mixed water mode
