@@ -173,6 +173,73 @@ function updateReputation(currentWaterType) {
     gameState.lastWaterType = currentWaterType;
 }
 
+// Price consistency system functions
+function updatePriceConsistency(currentPrice) {
+    // Check if price is the same as previous day
+    if (gameState.day > 1 && gameState.lastSellingPrice === currentPrice) {
+        gameState.consecutiveSamePriceDays++;
+    } else {
+        // Price changed, reset counter
+        gameState.consecutiveSamePriceDays = 1; // Start counting from this day
+    }
+    
+    // Calculate bonus based on consecutive days (every 5 days = +20%, max 80%)
+    const bonusMultiplier = Math.floor(gameState.consecutiveSamePriceDays / 5);
+    gameState.priceConsistencyBonus = Math.min(80, bonusMultiplier * 20);
+    
+    gameState.lastSellingPrice = currentPrice;
+}
+
+async function showPriceConsistencyStatus() {
+    if (gameState.day >= 2) { // Only show from day 2 onwards
+        if (gameState.consecutiveSamePriceDays >= 5 && gameState.priceConsistencyBonus > 0) {
+            const nextBonus = gameState.priceConsistencyBonus < 80 ? gameState.priceConsistencyBonus + 20 : 80;
+            const daysToNext = gameState.priceConsistencyBonus < 80 ? 
+                (5 - (gameState.consecutiveSamePriceDays % 5)) : 0;
+            
+            if (gameState.priceConsistencyBonus >= 80) {
+                showPriceConsistencyNotification(
+                    '💎', 
+                    'Maximum Brand Loyalty!', 
+                    `+${gameState.priceConsistencyBonus}% sales from consistent pricing (maxed out!)`
+                );
+            } else {
+                showPriceConsistencyNotification(
+                    '🔄', 
+                    'Brand Loyalty Bonus!', 
+                    `+${gameState.priceConsistencyBonus}% sales from ${gameState.consecutiveSamePriceDays} days of ₹${gameState.lastSellingPrice} pricing`
+                );
+            }
+        } else if (gameState.consecutiveSamePriceDays >= 3) {
+            const daysLeft = 5 - gameState.consecutiveSamePriceDays;
+            showPriceConsistencyNotification(
+                '📊', 
+                'Building Brand Loyalty...', 
+                `${daysLeft} more days of ₹${gameState.lastSellingPrice} pricing for +20% sales bonus`
+            );
+        } else if (gameState.consecutiveSamePriceDays === 1 && gameState.day > 2) {
+            showPriceConsistencyNotification(
+                '🔄', 
+                'Price Changed', 
+                `Brand loyalty reset - new price: ₹${gameState.lastSellingPrice}`
+            );
+        }
+    }
+}
+
+function showPriceConsistencyNotification(icon, title, message) {
+    // Use the existing achievement notification system
+    if (window.achievementManager) {
+        const fakeAchievement = {
+            icon: icon,
+            name: title,
+            description: message,
+            customTitle: 'Brand Loyalty Update'
+        };
+        window.achievementManager.showNotification(fakeAchievement);
+    }
+}
+
 async function showReputationStatus() {
     if (gameState.day >= 2) { // Only show from day 2 onwards
         if (gameState.consecutiveFilteredDays >= 5) {
@@ -493,7 +560,15 @@ async function processSellingPrice(input) {
     }
     gameState.sellingPrice = price;
     hideInput();
+    
+    // Update price consistency system
+    updatePriceConsistency(price);
+    
     await typewriterText(`You set the price at ₹${price} per bottle.`, 40);
+    
+    // Show price consistency status
+    await showPriceConsistencyStatus();
+    
     await typewriterText("Time to start selling!", 40);
     gameState.currentStep = GameStep.SELLING;
     await startSelling();
